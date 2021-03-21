@@ -354,3 +354,22 @@ test('Ignore inverse --- SUCCEED NOT ADD FILE', async (t) => {
 
   t.is(true, success);
 });
+
+test('Invalid regular expression --- FAIL AND ADD ALL FILES', async (t) => {
+  const snow: string = getSnowexec(t);
+  const snowWorkdir = generateUniqueTmpDirName();
+
+  await exec(t, snow, ['init', basename(snowWorkdir)], { cwd: dirname(snowWorkdir) });
+
+  createFiles(snowWorkdir, 'ignore');
+  const ignoreFile = join(snowWorkdir, 'ignore');
+  const buf = Buffer.from('subdir)*');
+  fse.writeFileSync(ignoreFile, buf, { flag: 'a' });
+
+  const stdout = await exec(t, snow, ['add', '*'], { cwd: snowWorkdir }, EXEC_OPTIONS.RETURN_STDOUT);
+
+  let success = true;
+  success = success && String(stdout).includes('Invalid Expression');
+  success = success && String(stdout).includes('subdir)*');
+  t.is(true, success);
+});

@@ -14,6 +14,7 @@ import {
 } from './src/repository';
 import { TreeDir, TreeFile } from './src/treedir';
 import { IoContext } from './src/io_context';
+import { Result } from './src/common';
 
 const program = require('commander');
 const chalk = require('chalk');
@@ -174,7 +175,12 @@ program
     try {
       const repo = await Repository.open(process.cwd());
 
-      const statusFiles: StatusEntry[] = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+      const status: Result<StatusEntry[]> = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+      if (!status.success) {
+        process.stderr.write(`Cancelled add: ${status.error}\n`);
+        return;
+      }
+      const statusFiles: StatusEntry[] = status.value;
 
       const relCwd = relative(repo.workdir(), process.cwd());
 
@@ -280,7 +286,13 @@ program
         if (opts.discardChanges && opts.keepChanges) {
           throw new Error('either --discard-changes or --keep-changes can be used, not both');
         } else if (!opts.discardChanges && !opts.keepChanges) {
-          const statusFiles: StatusEntry[] = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+          const status: Result<StatusEntry[]> = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+          if (!status.success) {
+            process.stderr.write(`Cancelled add: ${status.error}\n`);
+            return;
+          }
+          const statusFiles: StatusEntry[] = status.value;
+
           for (const statusFile of statusFiles) {
             if (statusFile.isModified()) {
               process.stdout.write(`M ${statusFile.path}\n`);
@@ -350,7 +362,13 @@ program
     try {
       const repo = await Repository.open(process.cwd());
 
-      const files: StatusEntry[] = await repo.getStatus(FILTER.INCLUDE_IGNORED | FILTER.INCLUDE_UNTRACKED);
+      const status: Result<StatusEntry[]> = await repo.getStatus(FILTER.INCLUDE_IGNORED | FILTER.INCLUDE_UNTRACKED);
+      if (!status.success) {
+        process.stderr.write(`Cancelled add: ${status.error}\n`);
+        return;
+      }
+      const files: StatusEntry[] = status.value;
+
       const newFiles: StatusEntry[] = [];
       const modifiedFiles: StatusEntry[] = [];
       const deletedFiles: StatusEntry[] = [];
@@ -641,7 +659,13 @@ program
         if (opts.discardChanges && opts.keepChanges) {
           throw new Error('either --discard-changes or --keep-changes can be used, not both');
         } else if (!opts.discardChanges && !opts.keepChanges) {
-          const statusFiles: StatusEntry[] = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+          const status: Result<StatusEntry[]> = await repo.getStatus(FILTER.INCLUDE_UNTRACKED);
+          if (!status.success) {
+            process.stderr.write(`Cancelled add: ${status.error}\n`);
+            return;
+          }
+          const statusFiles: StatusEntry[] = status.value;
+
           for (const statusFile of statusFiles) {
             if (statusFile.isModified()) {
               process.stdout.write(`M ${statusFile.path}\n`);

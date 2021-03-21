@@ -27,6 +27,14 @@ export class FileInfo {
   }
 }
 
+export class Result<T> {
+  success : boolean;
+
+  error: string;
+
+  value : T;
+}
+
 /**
  * Indicating the type of a directory.
  */

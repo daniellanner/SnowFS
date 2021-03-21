@@ -9,7 +9,7 @@ import {
 
 import { Log } from './log';
 import { Commit } from './commit';
-import { FileInfo, properNormalize } from './common';
+import { FileInfo, properNormalize, Result } from './common';
 import { IgnoreManager } from './ignore';
 import { Index } from './index';
 import { DirItem, OSWALK, osWalk } from './io';
@@ -738,29 +738,35 @@ export class Repository {
    * controlled by the passed filter.
    * @param filter  Defines which entries the function returns
    */
-  async getStatus(filter?: FILTER, commit?: Commit): Promise<StatusEntry[]> {
+  async getStatus(filter?: FILTER, commit?: Commit): Promise<Result<StatusEntry[]>> {
     let oldFilesMap: Map<string, TreeFile>;
     let oldFilePaths: string[];
+    const success = false;
     const statusResult: StatusEntry[] = [];
     const currentFiles: string[] = [];
 
     let ignore: IgnoreManager;
 
-    // First iterate over all files and get their file stats
     const snowtrackIgnoreDefault: string = join(this.repoWorkDir, 'ignore');
-    return fse.pathExists(snowtrackIgnoreDefault)
+    const s = await fse.pathExists(snowtrackIgnoreDefault)
       .then((exists: boolean) => {
         if (exists) {
           ignore = new IgnoreManager();
-          return ignore.init(snowtrackIgnoreDefault);
+          const init = ignore.init(snowtrackIgnoreDefault);
+          return init;
         }
-      })
-      .then(() => {
-        let walk: OSWALK = OSWALK.FILES | OSWALK.IGNORE_REPOS;
-        walk |= filter & FILTER.INCLUDE_DIRECTORIES ? OSWALK.DIRS : 0;
-        walk |= filter & FILTER.INCLUDE_IGNORED ? OSWALK.HIDDEN : 0;
-        return osWalk(this.repoWorkDir, walk);
-      })
+      });
+
+    if (!s.success) {
+      return { success: s.success, error: s.error, value: null };
+    }
+
+    let walk: OSWALK = OSWALK.FILES | OSWALK.IGNORE_REPOS;
+    walk |= filter & FILTER.INCLUDE_DIRECTORIES ? OSWALK.DIRS : 0;
+    walk |= filter & FILTER.INCLUDE_IGNORED ? OSWALK.HIDDEN : 0;
+
+    // First iterate over all files and get their file stats
+    return osWalk(this.repoWorkDir, walk)
       .then((items: DirItem[]) => {
         // head is null before first commit is made
         if (!this.head.hash) {
@@ -830,7 +836,7 @@ export class Repository {
           }
         }
 
-        return statusResult;
+        return { success: true, error: null, value: statusResult };
       });
   }
 

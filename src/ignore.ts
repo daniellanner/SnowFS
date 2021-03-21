@@ -1,11 +1,12 @@
 import * as fse from 'fs-extra';
+import { Result } from './common';
 
 export class IgnoreManager {
     ignores: RegExp[];
 
     includes: RegExp[];
 
-    async init(filepath: string) {
+    async init(filepath: string) : Promise<Result<void>> {
       this.ignores = [];
       this.includes = [];
 
@@ -16,13 +17,29 @@ export class IgnoreManager {
           if (line.length > 0 && !line.startsWith('//')) {
             line = line.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''); // remove /* comment */ or // comment
             line = line.replace('\\', '/'); // windows dir seperator char
-            if (line.startsWith('!')) {
-              this.includes.push(new RegExp(line.substr(1, line.length - 1).replace(/\*/, '[\\w/]*')));
+
+            const except = line.startsWith('!');
+            if (except) {
+              line = line.substr(1, line.length - 1);
+            }
+
+            const regexStr = line.replace(/\*/, '[\\w/]*');
+            let regex : RegExp;
+            try {
+              regex = new RegExp(regexStr);
+            } catch (error) {
+              return { success: false, error: `Invalid Expression in ignore file: ${line}`, value: null };
+            }
+
+            if (except) {
+              this.includes.push(regex);
             } else {
-              this.ignores.push(new RegExp(line.replace(/\*/, '[\\w/]*')));
+              this.ignores.push(regex);
             }
           }
         }
+
+        return { success: true, error: '', value: null };
       });
     }
 
